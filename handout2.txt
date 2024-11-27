@@ -1,0 +1,1354 @@
+Creating RDD From existing DataFrames and DataSet
+We have so far discussed a three ways that we can use to create an RDD.
+Can you number them:
+1. .
+2. .
+3. .
+We build up our understanding of apache spark by first looking at how we can create
+an RDD using existing data frames.
+A DataFrame is a distributed collection of data organized into named columns. It is
+conceptually equivalent to a table in a relational database or a data frame in R/Python,
+but with richer optimizations underneath.
+It is used to provide operations such as filtering, computation of aggregations, grouping,
+and can be used with Spark SQL.
+Data frames, popularly known as DFs, are logical columnar formats that make working
+with RDDs easier and more convenient, also making use of the same functions as RDDs
+in the same way.
+DataFrames can be constructed from a wide array of sources such as: structured data
+files, tables in Hive, external databases, or existing RDDs.
+To convert DataSet or DataFrame to RDD just use rdd() method on any of these data
+types.
+Example 1: Creating an RDD from A data Frame
+val myRdd2 = spark.range(20).toDF().rdd
+Here toDF() creates a DataFrame and by calling rdd on DataFrame returns back RDD.
+scala> myRdd2.foreach(println)
+[0]age 17:> (0 + 2) / 2]
+[10]
+[11]
+[12]
+[13]
+[14]
+[15]
+[16]
+[17]
+[18]
+[19]
+[1]
+[2]
+[3]
+[4]
+[5]
+[6]
+[7]
+[8]
+[9]
+Creating A Dataframe Using createDataFrame()
+Step1: Create a spark session object.
+import org.apache.spark.sql.SparkSession
+val spark= SparkSession.builder.master("local").getOrCreate()
+Step2: Create a new RDD containing five rows.
+val rdd = sc.parallelize(Seq(
+ ("John", "Manager", 38),
+ ("Mary", "Director", 45),
+ ("Sally", "Engineer", 30),
+ ("Okelo", "Clerk", 30),
+ ("Wiclife", "Trainers", 60),
+ ("Wallace", "Clerk", 40),
+ ("Eunice", "Trainer", 35),
+ ("Barack", "Trainer", 30),
+ ("Simon", "Trainer", 55)
+ )
+)
+The SparkSession object provides a utility method for creating a DataFrame –the
+createDataFrame(). Which receives an RDD and create a DataFrame from it.
+The createDataFrame() is an overloaded method, and we can call the method by passing
+the RDD alone or with a schema.
+Step 3: Creating a Dataframe with the default schema( Without any specified schema):
+val dfdata = spark.createDataFrame(rdd)
+:i) To see the default schema: Use the printSchema() Method
+scala> dfdata.printSchema()
+root
+ |-- _1: string (nullable = true)
+ |-- _2: string (nullable = true)
+ |-- _3: integer (nullable = false)
+:ii): To see the dataframe records:
+scala> dfdata.show()
+iii) : To display the third column ,using
+the default schema with the select ()
+method.
+scala> dfdata
+.select(dfdata("_3")).show()
++-------+--------+---+
+| _1| _2| _3|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+| _3|
++---+
+| 38|
+| 45|
+| 30|
+| 30|
+| 60|
+| 40|
+| 35|
+| 30|
+| 55|
+:iv) To see the dataframe records entries where _2(age) is greater than 30 years:
+scala> dfdata.filter(dfdata("_3")>30).show()
++-------+--------+---+
+| _1| _2| _3|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Simon| Trainer| 55|
+Creating A DataFrame Schema
+It’s advisable to create a DataFrame using a predefined schema object.
+A schema specifies the DataFrame column headers.
+To create a schema, we can use the toDF() method as shown below
+val dfdsch = dfdata.toDF("Name","Position",”Age”)
+We can see the new schema
+scala> dfdsch.printSchema()
+ |-- Name: string (nullable = true)
+ |-- Position: string (nullable = true)
+ |-- Age: integer (nullable = false)
+View dataframe data
+The different ways we can view dataframe data which includes.
+• Using show() methods
+• Using select() and show() methods
+• Using select() ,column index position and show() methods
+The Spark select() function can be used to :
+• select one or multiple columns,
+• select nested columns,
+• select column by index,
+• select all columns, from the list,
+• select columns by regular expression from a DataFrame. schema
+ The select() method is a transformation function in Spark and therefore returns a new
+DataFrame with the selected columns.
+Example 1: Using the show()
+scala> dfdsch.show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+Example 2: Obtaining Only the Name and the Age columns.
+In order to use the $-notation one must import import spark.implicits._
+scala> dfdsch.select($"Name",$"Age").show()
++-------+---+
+| Name|Age|
++-------+---+
+| John| 38|
+| Mary| 45|
+| Sally| 30|
+| Okelo| 30|
+|Wiclife| 60|
+|Wallace| 40|
+| Eunice| 35|
+| Barack| 30|
+| Simon| 55|
+Example 3: Using select() method to create another dataframe containing the
+Name and the Age columns only.
+I.e Creating a dataframe from another dataframe using select().
+scala> val dtfrm1=dfdsch.select($"Name",$"Age")
+Example4 : Displaying the new dataframe dataset
+scala> dtfrm1.show()
++-------+---+
+| Name|Age|
++-------+---+
+| John| 38|
+| Mary| 45|
+| Sally| 30|
+| Okelo| 30|
+|Wiclife| 60|
+|Wallace| 40|
+| Eunice| 35|
+| Barack| 30|
+| Simon| 55|
++-------+---+
+Example 5 Obtaining all the collumns labels as an array
+scala> val allcols=dfdsch.columns.map(m=>col(m))
+allcols: Array[org.apache.spark.sql.Column] = Array(Name, Position, Age)
+Example6: Print Array collumns
+scala> allcols.foreach(println)
+Name
+Position
+Age
+Example 7: To display specific column data
+fields using the select() method as shown:
+scala>
+dfdsch.select("Name","Position","
+Age").show()
+Example8: Displaying a
+particular record
+scala>
+dfdsch.select(dfdsch("Age")).show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
++-------+--------+---+
++---+
+|Age|
++---+
+| 38|
+| 45|
+| 30|
+| 30|
+| 60|
+| 40|
+| 35|
+| 30|
+| 55|
++---+
+Example 9: Getting records whose
+age>30
+scala>
+dfdsch.filter(dfdsch("Age")>30).s
+how()
+Example 10: Getting records whose
+age<30
+scala>
+dfdsch.filter(dfdsch("Age")<=30).
+show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Simon| Trainer| 55|
++------+--------+---+
+| Name|Position|Age|
++------+--------+---+
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Barack| Trainer| 30|
++------+--------+---+
+Example 11 Using the columns in the array with select()
+dfdsch.select(allcols:_*).show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+Example 12 can be written as
+dfdsch.select(columns.map(m=>col(m)):_*).show()
+Example 13: Select Column By Position or Index ( Note: index start from 0)
+To select a column based out of position or index, first get all columns using dfdsch.columns and
+get the column name from index, also use slice() to get column names from start and end positions.
+scala> dfdsch.select(dfdsch.columns(1)).show()
++--------+
+|Position|
++--------+
+| Manager|
+|Director|
+|Engineer|
+| Clerk|
+|Trainers|
+| Clerk|
+| Trainer|
+| Trainer|
+| Trainer|
+Example 14: Using Select To count all records
+scala> dfdsch.select("*").count()
+res60: Long = 9
+Using DataBase Table Data
+• We can have our source of data as the database.
+• To do so we use the sql Function to obtain the data and use it to create a data frame.
+To do so we use the createOrReplaceTempView() dataframe to create a table view containing
+the data in a data frame.
+The sql function on a SparkSession enables applications to run SQL queries programmatically
+and returns the result as a DataFrame.
+In this example we will use the table view we create to be the source of our table data.
+Step 1: Creating a temporary table view named employees
+scala> dfdsch.createOrReplaceTempView("employees")
+Step 2: Using spark object sql function to get the data.
+scala> val sqlDF = spark.sql("SELECT * FROM employees")
+sqlDF: org.apache.spark.sql.DataFrame = [Name: string, Position: string ...
+1 more field]
+Step 3: Using sqlDF like any other dataframe.
+i) Displaying the data frame data frame. All the methods we discussed above apply
+scala> sqlDF.show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+Remember: Concerning Temporary Table Views
+Temporary views in Spark SQL have a session scope. This means they will disappear if the
+session that created the view terminates.
+One can create a temporary table view that is available to other sessions in case one wanted
+shared view across other sessions.
+This is accomplished by using the createGlobalTempView() function. The view crated will
+survive until the Spark application terminates.
+Note that Global temporary view is tied to a system preserved database global_temp, and
+so we must use this database to refer it, e.g. SELECT * FROM global_temp.view1.
+Step 1: Creating a global temporary table view named employees
+scala> dfdsch.createGlobalTempView("employees")
+Step 2: Using spark object sql function to get the data.
+scala> val sqlDF = spark.sql("SELECT * FROM global_temp.employees")
+sqlDF: org.apache.spark.sql.DataFrame = [Name: string, Position: string ...
+1 more field]
+Step 3: Using sqlDF like any other dataframe.
+i) Displaying the data frame data frame. All the methods we discussed above apply
+scala> sqlDF.show()
+The Spark withColumn() Functions
+The withColumns() is a DataFrame transformation() method. This means it is not executed until an
+action called. We can use it to :
+1. Add a new column to DataFrame,
+2. Change the value of an existing column,
+3. Convert the datatype of a column,
+4. Derive a new column from an existing column.
+It is important that we learn and get used to spark Columns class methods as data science students
+org.apache.spark.sql.Column
+The column object corresponding with the Positions column can be created using either of the
+following:
+1. $"Positions”
+2. df("Positions") where df is the name of the dataframe
+3. col("Positions") (import org.apache.spark.sql.functions.col before
+using it)
+Example 1: Using withColumn() method to increase data of the “Age” column by adding 5
+The desired Column object is instantiated with the $"Position" statement.
+This command effectively creates a a new dataframe.
+scala> val ndfrm=dfdsch.withColumn("Age", col("Age")+(5))
+scala> ndfrm.show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 43|
+| Mary|Director| 50|
+| Sally|Engineer| 35|
+| Okelo| Clerk| 35|
+|Wiclife|Trainers| 65|
+|Wallace| Clerk| 45|
+| Eunice| Trainer| 40|
+| Barack| Trainer| 35|
+| Simon| Trainer| 60|
+Example 2: Using withColumn() method to change datatype of a colmun
+This command effectively creates a new dataframe.
+scala> val ndfrm1=ndfrm.withColumn("Age", col("Age").cast(“Double”))
+scala> ndfrm1.show()
++-------+--------+----+
+| Name|Position| Age|
++-------+--------+----+
+| John| Manager|43.0|
+| Mary|Director|50.0|
+| Sally|Engineer|35.0|
+| Okelo| Clerk|35.0|
+|Wiclife|Trainers|65.0|
+|Wallace| Clerk|45.0|
+| Eunice| Trainer|40.0|
+| Barack| Trainer|35.0|
+| Simon| Trainer|60.0|
++-------+--------+----+
+Example 3: Using withColumn() and startsWith() column method to show all Trainers
+The desired Column object is instantiated with the $"Position" statement.
+This command effectively creates a dataframe.
+scala> dfdsch.withColumn("Trainers", $"Position".startsWith("Trainer")).show()
++-------+--------+---+--------+
+| Name|Position|Age|Trainers|
++-------+--------+---+--------+
+| John| Manager| 38| false|
+| Mary|Director| 45| false|
+| Sally|Engineer| 30| false|
+| Okelo| Clerk| 30| false|
+|Wiclife|Trainers| 60| true|
+|Wallace| Clerk| 40| false|
+| Eunice| Trainer| 35| true|
+| Barack| Trainer| 30| true|
+| Simon| Trainer| 55| true|
+Example 4: Creating a new dataframe ndfrm1 that has the age reduced by 25
+scala> val ndfrm1=dfdsch.withColumn("Age", col("Age")-25)
+scala> ndfrm1.show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 18|
+| Mary|Director| 25|
+| Sally|Engineer| 10|
+| Okelo| Clerk| 10|
+|Wiclife|Trainers| 40|
+|Wallace| Clerk| 20|
+| Eunice| Trainer| 15|
+| Barack| Trainer| 10|
+| Simon| Trainer| 35|
++-------+--------+---+
+Example 5: Creating a new dataframe using ndfrm1 that has an added column
+Voter which uses the age to determine if a person can vote or not
+scala> val ndfrm2=ndfrm1.withColumn("Voter", ($"Age")>=18)
+scala> ndfrm2.show()
++-------+--------+---+-----+
+| Name|Position|Age|Voter|
++-------+--------+---+-----+
+| John| Manager| 18| true|
+| Mary|Director| 25| true|
+| Sally|Engineer| 10|false|
+| Okelo| Clerk| 10|false|
+|Wiclife|Trainers| 40| true|
+|Wallace| Clerk| 20| true|
+| Eunice| Trainer| 15|false|
+| Barack| Trainer| 10|false|
+| Simon| Trainer| 35| true|
++-------+--------+---+-----+
+Example 6: Creating a new dataframe using dfdsch to add a new column Trainer
+which specifies whether a person is a trainer or not
+scala> val ndfrm3=dfdsch.withColumn("Trainers", $"Position".startsWith("Trainer")).show()
+scala> ndfrm3.show()
++-------+--------+---+--------+
+| Name|Position|Age|Trainers|
++-------+--------+---+--------+
+| John| Manager| 38| false|
+| Mary|Director| 45| false|
+| Sally|Engineer| 30| false|
+| Okelo| Clerk| 30| false|
+|Wiclife|Trainers| 60| true|
+|Wallace| Clerk| 40| false|
+| Eunice| Trainer| 35| true|
+| Barack| Trainer| 30| true|
+| Simon| Trainer| 55| true|
+Example 7: Filter all the Voters in place
+scala> ndfrm2.filter(ndfrm2("Voter")==="true").show()
++-------+--------+---+-----+
+| Name|Position|Age|Voter|
++-------+--------+---+-----+
+| John| Manager| 18| true|
+| Mary|Director| 25| true|
+|Wiclife|Trainers| 40| true|
+|Wallace| Clerk| 20| true|
+| Simon| Trainer| 35| true|
++-------+--------+---+-----+
+Example 8: Creating a new dataframe using the original dfdsch dataframe but
+now with a new field Salary created by age*1000.
+scala> val ndfrm3=dfdsch.withColumn("Salary", col("Age").*(1000))
+Let us see the dataframe data
+scala> ndfrm3.show()
++-------+--------+---+------+
+| Name|Position|Age|Salary|
++-------+--------+---+------+
+| John| Manager| 38| 38000|
+| Mary|Director| 45| 45000|
+| Sally|Engineer| 30| 30000|
+| Okelo| Clerk| 30| 30000|
+|Wiclife|Trainers| 60| 60000|
+|Wallace| Clerk| 40| 40000|
+| Eunice| Trainer| 35| 35000|
+| Barack| Trainer| 30| 30000|
+| Simon| Trainer| 55| 55000|
+Example 9: Let us creating a new dataframe using the ndfrm3 in example above to
+have allowance calculated by 17% of the Salary. Take note of the rounding.
+scala> val ndfrm4=ndfrm.withColumn("Allowance", round(col("Salary").*(0.17),2))
+scala> ndfrm4.show()
++-------+--------+---+------+---------+
+| Name|Position|Age|Salary|Allowance|
++-------+--------+---+------+---------+
+| John| Manager| 38| 38000| 6460.0|
+| Mary|Director| 45| 45000| 7650.0|
+| Sally|Engineer| 30| 30000| 5100.0|
+| Okelo| Clerk| 30| 30000| 5100.0|
+|Wiclife|Trainers| 60| 60000| 10200.0|
+|Wallace| Clerk| 40| 40000| 6800.0|
+| Eunice| Trainer| 35| 35000| 5950.0|
+| Barack| Trainer| 30| 30000| 5100.0|
+| Simon| Trainer| 55| 55000| 9350.0|
+Example 14: Let us creating a new dataframe using the ndfrm4 in example 13 above
+where we get the Total Earnings( Gross)
+scala> val ndfrm5=ndfrm4.withColumn("Gross", round(col("Salary")+col("Allowance"),2))
+Let us see the DataFrame Data
+scala> ndfrm5.show()
++-------+--------+---+------+---------+-------+
+| Name|Position|Age|Salary|Allowance| Gross|
++-------+--------+---+------+---------+-------+
+| John| Manager| 38| 38000| 6460.0|44460.0|
+| Mary|Director| 45| 45000| 7650.0|52650.0|
+| Sally|Engineer| 30| 30000| 5100.0|35100.0|
+| Okelo| Clerk| 30| 30000| 5100.0|35100.0|
+|Wiclife|Trainers| 60| 60000| 10200.0|70200.0|
+|Wallace| Clerk| 40| 40000| 6800.0|46800.0|
+| Eunice| Trainer| 35| 35000| 5950.0|40950.0|
+| Barack| Trainer| 30| 30000| 5100.0|35100.0|
+| Simon| Trainer| 55| 55000| 9350.0|64350.0|
++-------+--------+---+------+---------+-------+
+Example 15: We need to calculate the tax(PAYEE) payable using the Gross Income.
+We can use the taxable rate bracket below.
+Bracket Tax %
+ x<=15000 0
+15001<x<=20000 10
+20001<x<=30000 15
+30001<x<=40000 20
+40001<x<=50000 25
+60001<x 30
+To do so, we will need to use a user defined method(UDF) the use the brackets above to
+return the tax payable as shown below.
+So we define the function below that receive an amount of money and return tax.
+def getTax(x:Double):Double={
+if(x<=15000) 0
+else if((15000<x) && (x<=20000)) 0.10*(x-15000)
+else if((20000<x) && (x<=30000)) 500.00+0.15*(x-20000)
+else if((30000<x) && (x<=40000)) 2000.00+0.2*(x-30000)
+else if((40000<x) && (x<=50000)) 4000+0.25*(x-40000)
+else 6500.00+0.3*(x-50000)
+}
+The function above must first be registered with our spark session as show below
+scala> val theTax = spark.udf.register("Tax",getTax(_))
+Once it is registerd we can use with the withColumn() method to create a new
+DataFrame that inc;ludes the tax payable.
+scala> val ndfrm6=ndfrm5.withColumn("ThisTax",theTax(col("Gross")))
+scala> ndfrm6.show()
++-------+--------+---+------+---------+-------+-------+
+| Name|Position|Age|Salary|Allowance| Gross|ThisTax|
++-------+--------+---+------+---------+-------+-------+
+| John| Manager| 38| 38000| 6460.0|44460.0| 5115.0|
+| Mary|Director| 45| 45000| 7650.0|52650.0| 7295.0|
+| Sally|Engineer| 30| 30000| 5100.0|35100.0| 3020.0|
+| Okelo| Clerk| 30| 30000| 5100.0|35100.0| 3020.0|
+|Wiclife|Trainers| 60| 60000| 10200.0|70200.0|12560.0|
+|Wallace| Clerk| 40| 40000| 6800.0|46800.0| 5700.0|
+| Eunice| Trainer| 35| 35000| 5950.0|40950.0| 4237.5|
+| Barack| Trainer| 30| 30000| 5100.0|35100.0| 3020.0|
+| Simon| Trainer| 55| 55000| 9350.0|64350.0|10805.0|
++-------+--------+---+------+---------+-------+-------+
+Example 16: Let us creating a new dataframe using the ndfrm6 in example 15 above
+to get the Net Earnings
+scala> val ndfrm7=ndfrm4.withColumn("Net", round(col("Gross")-col("ThisTax"),2))
+Let us see the DataFrame Data
+scala> ndfrm7.show()
++-------+--------+---+------+---------+-------+-------+-------+
+| Name|Position|Age|Salary|Allowance| Gross|ThisTax| Net|
++-------+--------+---+------+---------+-------+-------+-------+
+| John| Manager| 38| 38000| 6460.0|44460.0| 5115.0|39345.0|
+| Mary|Director| 45| 45000| 7650.0|52650.0| 7295.0|45355.0|
+| Sally|Engineer| 30| 30000| 5100.0|35100.0| 3020.0|32080.0|
+| Okelo| Clerk| 30| 30000| 5100.0|35100.0| 3020.0|32080.0|
+|Wiclife|Trainers| 60| 60000| 10200.0|70200.0|12560.0|57640.0|
+|Wallace| Clerk| 40| 40000| 6800.0|46800.0| 5700.0|41100.0|
+| Eunice| Trainer| 35| 35000| 5950.0|40950.0| 4237.5|36712.5|
+| Barack| Trainer| 30| 30000| 5100.0|35100.0| 3020.0|32080.0|
+| Simon| Trainer| 55| 55000| 9350.0|64350.0|10805.0|53545.0|
++-------+--------+---+------+---------+-------+-------+-------+
+User Defined Functions(UDF)
+You have already created , registered and used a user defined function.
+• User-Defined Functions (aka UDF) is a feature of Spark SQL that we use to define new
+Column-based functions that extend the vocabulary of Spark SQL’s DSL for transforming
+Datasets.
+• User-defined-functions (UDF) helps one to specify other functions you may need to work with
+and are not available within SQL.functions
+• This is a very neat feature when working with Spark as it will allow you to define functions you
+can then apply to data-frames.
+• Historically, user-defined functions operate one-row-at-a-time, and thus suffer from high
+serialization and invocation overhead.
+• So if you are working with data in tabular format it might well makes sense to use udf to
+leverag customizable functions.
+if we want to write the udf in scala while using spark, we need to import the following
+org.apache.spark.sql.functions.udf
+Adding, Replacing, or Updating multiple Columns
+To add, replace or update multiple columns in Spark DataFrame, it is not wise to chain
+withColumn()function as it leads into performance issue.
+It is recommended to use select() after creating a temporary view on DataFrame as illustrated below.
+You can create the temporary view table using the dtaframe :
+• createGlobalTempView ( spark version >=2.0)
+• CreateOrReplaceTempView or ( spark version >=2.0)
+• registerTempTable ( only for spark version <2.0)
+createGlobalTempView V/S CreateOrReplaceTempView ( for Spark>=2.0)
+• CreateorReplaceTempView is used when you want to store the table for a particular spark
+session and createGlobalTempView is used when you want to share the temp table across
+multiple spark sessions.
+The example below takes us through the steps of creating a temporary view table.
+Example1
+Step 1: Create the case class
+scala> case class Employee(Name:String, Age:Int, Designation:String, Salary:Int, ZipCode:Int)
+Step 2: Create the data
+scala> val empData = Seq( Employee("Anto", 21, "Software Engineer", 2000, 56798),
+Employee("Joyce", 21, "Software Engineer", 2000, 93798),
+Employee("Mary", 30, "Software Engineer", 2000, 28798),
+Employee("Bill", 62, "CEO", 22000, 45798),
+Employee("Joseph", 74, "VP", 12000, 98798),
+Employee("Steven", 45, "Development Lead", 8000, 98798),
+Employee("George", 21, "Sr.Software Engineer", 4000, 98798),
+Employee("Martha", 21, "Sr.Software Engineer", 4000, 98798)
+)
+Step 3: Using the data and the case class Create the datacframe
+scala> val empDF= empData.toDF
+You can view the datacframe Schema
+scala> empDF.printSchema()
+root
+ |-- Name: string (nullable = true)
+ |-- Age: integer (nullable = false)
+ |-- Designation: string (nullable = true)
+ |-- Salary: integer (nullable = false)
+ |-- ZipCode: integer (nullable = false)
+Step 4: Using the dataframe to create the temporary table view
+scala> empDF.registerTempTable("Employee")
+Step 5: Now you can use the temporary table by running sql queries.
+scala> spark.sql("select * from Employee").show
++------+---+--------------------+------+-------+
+| Name|Age| Designation|Salary|ZipCode|
++------+---+--------------------+------+-------+
+| Anto| 21| Software Engineer| 2000| 56798|
+| Joyce| 21| Software Engineer| 2000| 93798|
+| Mary| 30| Software Engineer| 2000| 28798|
+| Bill| 62| CEO| 22000| 45798|
+|Joseph| 74| VP| 12000| 98798|
+|Steven| 45| Development Lead| 8000| 98798|
+|George| 21|Sr.Software Engineer| 4000| 98798|
+|Martha| 21|Sr.Software Engineer| 4000| 98798|
+scala> spark.sql("select * from Employee WHERE Salary>2000").show
++------+---+--------------------+------+-------+
+| Name|Age| Designation|Salary|ZipCode|
++------+---+--------------------+------+-------+
+| Bill| 62| CEO| 22000| 45798|
+|Joseph| 74| VP| 12000| 98798|
+|Steven| 45| Development Lead| 8000| 98798|
+|George| 21|Sr.Software Engineer| 4000| 98798|
+|Martha| 21|Sr.Software Engineer| 4000| 98798|
++------+---+--------------------+------+-------+
+scala> spark.sql("select * from Employee WHERE Salary>2000 AND Age>30").show
++------+---+----------------+------+-------+
+| Name|Age| Designation|Salary|ZipCode|
++------+---+----------------+------+-------+
+| Bill| 62| CEO| 22000| 45798|
+|Joseph| 74| VP| 12000| 98798|
+|Steven| 45|Development Lead| 8000| 98798|
++------+---+----------------+------+-------+
+Using spark.sql with the ndfrm1 dataframe in slide number 12
+Let us consider the dnfrm1 data frame we worked with above
+scala> ndfrm1.show()
++-------+--------+---+
+| Name|Position|Age|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+We want to use the spark.sql function to create a new dataframe with the Salary and
+allowances by firsat creating a temporary table view
+Step 1: Creating the view table of data named employees.
+scala> ndfrm1.createOrReplaceTempView("Employee")
+Step 2: Create a new DF from the Employee temp view with new columns and field values.
+scala> val ndfrm2=spark.sql("SELECT Name,Position, Age, Age*1000 as Salary,Age*1000*0.17
+as Allowance FROM Employee")
+scala> ndfrm2.show()
++-------+--------+----+-------+-----------------+
+| Name|Position| Age| Salary| Allowance|
++-------+--------+----+-------+-----------------+
+| John| Manager|43.0|43000.0|7310.000000000001|
+| Mary|Director|50.0|50000.0| 8500.0|
+| Sally|Engineer|35.0|35000.0| 5950.0|
+| Okelo| Clerk|35.0|35000.0| 5950.0|
+|Wiclife|Trainers|65.0|65000.0| 11050.0|
+|Wallace| Clerk|45.0|45000.0|7650.000000000001|
+| Eunice| Trainer|40.0|40000.0|6800.000000000001|
+| Barack| Trainer|35.0|35000.0| 5950.0|
+| Simon| Trainer|60.0|60000.0| 10200.0|
+Step 3: We can round the Allowance column as below
+scala> val ndfrm3=ndfrm2.withColumn("Allowance",round(col("Allowance"),2))
+scala> ndfrm3.show()
++-------+--------+----+-------+---------+
+| Name|Position| Age| Salary|Allowance|
++-------+--------+----+-------+---------+
+| John| Manager|43.0|43000.0| 7310.0|
+| Mary|Director|50.0|50000.0| 8500.0|
+| Sally|Engineer|35.0|35000.0| 5950.0|
+| Okelo| Clerk|35.0|35000.0| 5950.0|
+|Wiclife|Trainers|65.0|65000.0| 11050.0|
+|Wallace| Clerk|45.0|45000.0| 7650.0|
+| Eunice| Trainer|40.0|40000.0| 6800.0|
+| Barack| Trainer|35.0|35000.0| 5950.0|
+| Simon| Trainer|60.0|60000.0| 10200.0|
+Rename Column Name
+Step 4: To rename an existing column use the sql “withColumnRenamed” function on DataFrame.
+dataframe.withColumnRenamed("columntochange","newname")
+Suppose now we know that the Allowance column is specifically House
+Allowance (“Hseall”). WE can change the column to the new value.
+scala>val rddfrm1=ndfrm3.withColumnRenamed("Allowance","HseAll")
+scala> rddfrm1.show()
++-------+--------+---+------+--------+
+| Name|Position|Age|Salary| HseAll|
++-------+--------+---+------+--------+
+| John| Manager| 38| 38000| 6460.00|
+| Mary|Director| 45| 45000| 7650.00|
+| Sally|Engineer| 30| 30000| 5100.00|
+| Okelo| Clerk| 30| 30000| 5100.00|
+|Wiclife|Trainers| 60| 60000|10200.00|
+|Wallace| Clerk| 40| 40000| 6800.00|
+| Eunice| Trainer| 35| 35000| 5950.00|
+| Barack| Trainer| 30| 30000| 5100.00|
+| Simon| Trainer| 55| 55000| 9350.00|
++-------+--------+---+------+--------+
+Checking for the Presence of Column Name
+Step 5: To check for the presence of column use the “contains” function of the object
+fieldnames.
+scala> println(rddfrm1.schema.fieldNames.contains("Name"))
+true
+Knowing the Number of Columns in a dataframe
+Step 6: To the number of columns in a dataframe use the “length” property of the object
+fieldnames.
+scala> println(rddfrm1.schema.fieldNames.length)
+5
+Spark Groupby() with Aggregate Functions
+Spark groupBy() function is used to collect the identical data into groups on DataFrame/Dataset and
+perform aggregate functions on the grouped data
+When we perform groupBy() on Spark Dataframe, it returns RelationalGroupedDataset object which
+contains the aggregate functions below.
+1. count() - Returns the count of rows for each group.
+2. mean() - Returns the mean of values for each group.
+3. max() - Returns the maximum of values for each group.
+4. min() - Returns the minimum of values for each group.
+5. sum() - Returns the total for values for each group.
+6. avg() - Returns the average for values for each group.
+7. agg() - Using agg() function, we can calculate more than one aggregate at a
+time.
+Example1: Getting the sum of Salaries per position
+scala> rddfrm1.groupBy("Position").sum("Salary").show()
++--------+-----------+
+|Position|sum(Salary)|
++--------+-----------+
+| Trainer| 120000|
+|Director| 45000|
+|Trainers| 60000|
+| Clerk| 70000|
+|Engineer| 30000|
+| Manager| 38000|
+Example2: Counting the number
+of employees per position
+scala>
+rddfrm1.groupBy("Position").count().
+show()
+Example3: Getting the maximum
+salary per position
+scala>
+rddfrm1.groupBy("Position").max(“Sal
+ary”).show()
++--------+-----+
+|Position|count|
++--------+-----+
+| Trainer| 3|
+|Director| 1|
+|Trainers| 1|
+| Clerk| 2|
+|Engineer| 1|
+| Manager| 1|
++--------+-----+
++--------+-----------+
+|Position|max(Salary)|
++--------+-----------+
+| Trainer| 55000|
+|Director| 45000|
+|Trainers| 60000|
+| Clerk| 40000|
+|Engineer| 30000|
+| Manager| 38000|
++--------+-----------+
+Example4: Getting the minimum salary per position
+scala> rddfrm1.groupBy("Position").min(“Salary”).show()
+Example5: Getting the Average salary per position
+scala> rddfrm1.groupBy("Position").avg(“Salary”).show()
+Class Exercise
+You are given the following data and schema : Use it to write the spark statement
+to answer the questions that follow.
+The data to build dataftrame
+val data = Seq(("James","Owino","Kenya","Kisumu",50,50000),
+ ("Michael","Mungai","Kenya","Nakuru",60,60000),
+ ("Joyce","Akinyi","Kenya","Nyeri",35,55000),
+ ("Maria","Jones","USA","Florida",43,40000),
+ ("George","Okongo","Kenya","Nairobi",16,70000),
+("Brian","Kamau","Kenya","Nairobi",29,150000),
+ ("Melinda","Williams","USA","Georgia",39,200000),
+("James","Okwamo","USA","Florida",49,175000),
+("Meena","Kimani","Kenya","Nakuru",36,76000),
+("Brenda","Johnson","USA","Georgia",16,120000),
+("Johnson","Mike","Kenya","Nairobi",29,56000),
+("Melinda","Williams","USA","Georgia",19,45000),
+("Johnson","Wambwere","Kenya","Nairobi",29,79000)
+ )
+A sequence for the schema
+val columns = Seq("firstname","lastname","country","City",Age”,”Salary”)
+1. Create and display data frame df with the schema above
+2. Print the columns heading for dataframe
+3. Create and display data frame usadf from df above that contains only
+those who work in USA
+4. Create and display data frame df1 from df above that contains only
+firstname, lastname,age and salary
+5. Create and display the data frame df2 from df above that contains an
+additional column Trvall (TravelAllowance) which calculated at 20% of
+the salary for all those in USA and 10% for those in Kenya
+6. Create and display the data frame df3 from df2 above that contains
+an additional column Total which is the sum of Salary and Trvall.
+7. Display from df3 above data grouped by Country
+8. Display from df3 above sum of Total Earnings grouped by Country
+9. Display from df3 above first 5 Employees earning the most
+Introduction to Spark Dataset
+Spark Dataset is one of the basic data structures by SparkSQL.
+It helps in storing the intermediate data for spark data processing
+Spark dataset with row type is very similar to Data frames that work as a tabular form on the Resilient
+distributed dataset(RDD).
+The Datasets are supported through Scala and Java programming APIs. Spark’s dataset supports both
+compile-time safety and optimizations, making it a preferred choice for implementation in the spark
+framework.
+Definition
+Compile-time safety means that the compiler can analyze your code and guarantee that certain
+kinds of errors are not present.
+Example: To illustrate Compile-time safety in Java.
+Features of Spark Dataset
+Below are the different features mentioned:
+1. Type Safety: Dataset provides compile-time type safety. It means that the application’s syntax and
+analysis errors will be checked at compile time before it runs.
+2. Immutability: Dataset is also immutable like RDD and Dataframe. It means we can not change the
+created Dataset. Every time a new dataset is created when any transformation is applied to the dataset.
+3. Schema: Dataset is an in-memory tabular structure that has rows and named columns.
+4. Performance and Optimization: Like Dataframe, the Dataset also uses Catalyst Optimization to
+generate an optimized logical and physical query plan.
+5. Programming language: The dataset api is only present in Java and Scala, which are compiled
+languages but not in Python, which is an interpreted language.
+6. Lazy Evaluation: Like RDD and Dataframe, the Dataset also performs the lazy evaluation. It means
+the computation happens only when action is performed. Spark makes only plans during the
+transformation phase.
+7. Serialization and Garbage Collection: The spark dataset does not use standard serializers(Kryo or
+Java serialization). Instead, it uses Tungsten’s fast in-memory encoders, which understand the internal
+structure of the data and can efficiently transform objects into internal binary storage. It uses off-heap
+data serialization using a Tungsten encoder, and hence there is no need for garbage collection.
+Why do we need Spark Dataset?
+To better understand why Dataset, lets look at how spark has evolved
+• RDD is the core of Spark. Inspired by SQL and to make things easier, Dataframe was added on
+top of RDD. Dataframe is equivalent to a table in a relational database or a DataFrame in
+Python.
+• RDD provides compile-time type safety, but there is an absence of automatic optimization in
+RDD.
+• Dataframe provides automatic optimization, but it lacks compile-time type safety.
+• Dataset is added as an extension of the Dataframe.
+• Dataset combines both RDD features (i.e. compile-time type safety ) and Dataframe (i.e. Spark
+SQL automatic optimization ).
+[RDD(Spark 1.0)] -> [Dataframe(Spark1.3)] -> [Dataset(Spark1.6)]
+As Dataset has compile-time safety, it is only supported in a compiled language( Java & Scala ) but
+not in an interpreted language(R & Python).
+But Spark Dataframe API is available in all four languages( Java, Scala, Python & R ) supported by
+Spark.
+First a Review on Case Class
+While working with datasets and dataframes we may need to use a case class as we will see later.
+A case class has all of the functionality of a regular class, but in addition when the compiler sees the
+case keyword in front of a class, it generates code for you, with the following additions:
+• Case class constructor parameters are public val fields by default, so accessor methods are
+generated for each parameter.
+• An apply method is created in the companion object of the class, so you don’t need to use the
+new keyword to create a new instance of the class.
+• An unapply method is generated, which lets you use case classes in more ways in match
+expressions.
+• A copy method is generated in the class. You may not use this feature in Scala/OOP code, but
+it’s used all the time in Scala/FP.
+• equals and hashCode methods are generated, which let you compare objects and easily use
+them as keys in maps. 
+• A default toString method is generated, which is helpful in debugging.
+Examples of creating and using Case Class
+Create case class Person
+scala> case class Person(name: String, relation: String)
+defined class Person
+Create an object of class Person ( no use opf new as in most cases
+scala> val christina = Person("Christina", "niece")
+christina: Person = Person(Christina,niece)
+N.B. A case class is by default immutable
+Creating Spark Datasets
+There are multiple ways of creating a Dataset in spark
+1. First Create SparkSession
+SparkSession is a single entry point to a spark application that allows interacting with underlying Spark
+functionality and programming Spark with DataFrame and Dataset APIs.
+val spark =
+SparkSession.builder().appName("SparkDatasetExample").enableHiveSuppo
+rt().getOrCreate()
+• To create a dataset using basic data structure like Range, Sequence, List, etc.:
+Example 1: Creating a dataset Using Range
+scala> val dst=spark.range(10)
+dst: org.apache.spark.sql.Dataset[Long] = [id: bigint]
+scala> dst.show()
++---+
+| id|
++---+
+| 0|
+| 1|
+| 2|
+| 3|
+| 4|
+| 5|
+| 6|
+| 7|
+| 8|
+| 9|
++---+
+Example 2: Creating a dataset Using Sequence and toDS() method
+scala> val dst=Seq(10,17,12,25,64,78).toDS()
+dst: org.apache.spark.sql.Dataset[Int] = [value: int]
+Example 3: Creating a dataset Using List and toDS() method
+scala> val dst=List(10,17,12,25,64,78).toDS()
+Example 4: Creating a dataset using the sequence of case classes by
+calling the .toDS() method :
+scala> case class BOOK(Name:String, Stock:Int)
+scala> val bksDS=Seq(BOOK("Scala",30),BOOK("Java",15),BOOK("C+
++",1),BOOK("Kafka",40),BOOK("Python",20)).toDS()
+bksDS: org.apache.spark.sql.Dataset[BOOK] = [Name: string, Stock: int]
+scala> bksDS.show()
++-----+-----+
+| Name|Stock|
++-----+-----+
+|Scala| 30|
+|Java| 30|
+|C++| 30|
+|kafka| 40|
+|Python| 20|
+Example 5 : Create a Dataset From an RDD and the .toDS() method
+val empDS = sc.parallelize(Seq(
+ ("John", "Manager", 38),
+ ("Mary", "Director", 45),
+ ("Sally", "Engineer", 30),
+ ("Okelo", "Clerk", 30),
+ ("Wiclife", "Trainers", 60),
+ ("Wallace", "Clerk", 40),
+ ("Eunice", "Trainer", 35),
+ ("Barack", "Trainer", 30),
+ ("Simon", "Trainer", 55)
+ )
+).toDS()
+scala> empDS.show()
++-------+--------+---+
+| _1| _2| _3|
++-------+--------+---+
+| John| Manager| 38|
+| Mary|Director| 45|
+| Sally|Engineer| 30|
+| Okelo| Clerk| 30|
+|Wiclife|Trainers| 60|
+|Wallace| Clerk| 40|
+| Eunice| Trainer| 35|
+| Barack| Trainer| 30|
+| Simon| Trainer| 55|
+Example 5: To create the dataset from Dataframe using Case Class:
+STEP1: Create the case class that will be used to map our data to column fields
+scala> case class BOOK(Name:String, Stock:Int)
+STEP2: Create the DataSet using the case class
+scala> val bksSQ=Seq(BOOK("Scala",30),BOOK("Java",15),BOOK("C+
++",1),BOOK("Kafka",40),BOOK("Python",20))
+STEP3: Create The books RDD
+scala> val bksRDD=sc.parallelize(bksSQ)
+STEP4: Create A DataFrame using the RDD
+scala> val bookDF=bksRDD.toDF()
+STEP5: Create the DataSet using the Data Frame
+scala> val bookDS=bookDF.as[BOOK]
+scala> bookDS.show()
++------+-----+
+| Name|Stock|
++------+-----+
+| Scala| 30|
+|Python| 20|
+| Java| 25|
+| C++| 10|
+| Kafka| 40|
++------+-----+
+Example 6: To create the Dataset from Dataframe using Tuples
+Remember: A Scala Tuple is a container that can be used to hold different values of different types but
+to a limted size.. Consider the case of a Fruit_tuple which holds fruit name, count, color and cost.
+A Tuple is immutable i.e which can be changed like a list in Scala and it is not like an Array in Scala.
+Let us create a sample data using Tuples to work with as shown below.
+val bksSQ=Seq(("Scala",30,2011),("Java",15,2005),("C++",1,2010),
+("Kafka",40,2019),("Python",20,2000),("Scala2",10,2013),("Java2",15,2015),
+("C++2",11,2011),("Kafka2",40,2017),("Python2",30,2010),("Scala3",2,2011),
+("Java3",10,2005),("C++3",6,2010),("Kafka3",5,2016),("Python3",20,2013),
+("Scala4",2,2011),("Java4",12,2015),("C++4",11,2010),("Kafka4",1,2019),
+("Python4",3,2022))
+Let us create an RDD first.
+scala> val bksRDD=sc.parallelize(bksSQ)
+Convert the RDD to a dataframe with columns
+scala> val bookDF=bksRDD.toDF("Name","Stock","Yopb")
+Convert the dataframe to the corresponding Dataset
+import org.apache.spark.sql.Dataset
+val bksds: Dataset[(String,Int,Int)] = bookDF.as[( String,Int,Int)]
+Our dataset Looks as shown below
+scala> bksds.show()
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| Scala| 30|2011|
+| Java| 15|2005|
+| C++| 1|2010|
+| Kafka| 40|2019|
+| Python| 20|2000|
+| Scala2| 10|2013|
+| Java2| 15|2015|
+| C++2| 11|2011|
+| Kafka2| 40|2017|
+|Python2| 30|2010|
+| Scala3| 2|2011|
+| Java3| 10|2005|
+| C++3| 6|2010|
+| Kafka3| 5|2016|
+|Python3| 20|2013|
+| Scala4| 2|2011|
+| Java4| 12|2015|
+| C++4| 11|2010|
+| Kafka4| 1|2019|
+|Python4| 3|2022|
+DataSet Operations
+Now we know how to create a dataset using different techniques:
+• From a list, sequence and tuples
+• From an rdd
+• From a dataframe
+Once you created your datasets the next step is to use the dataset to
+generate reports.
+Example1: Sorting By Name
+scala> val bksds2 =
+bksds.sort("Name").show()
+Example2: Sorting By Yopb
+scala> val bksds2 =
+bksds.sort("Yopb").show()
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| C++| 1|2010|
+| C++2| 11|2011|
+| C++3| 6|2010|
+| C++4| 11|2010|
+| Java| 15|2005|
+| Java2| 15|2015|
+| Java3| 10|2005|
+| Java4| 12|2015|
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Kafka3| 5|2016|
+| Kafka4| 1|2019|
+| Python| 20|2000|
+|Python2| 30|2010|
+|Python3| 20|2013|
+|Python4| 3|2022|
+| Scala| 30|2011|
+| Scala2| 10|2013|
+| Scala3| 2|2011|
+| Scala4| 2|2011|
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| Python| 20|2000|
+| Java| 15|2005|
+| Java3| 10|2005|
+|Python2| 30|2010|
+| C++4| 11|2010|
+| C++| 1|2010|
+| C++3| 6|2010|
+| Scala3| 2|2011|
+| Scala4| 2|2011|
+| Scala| 30|2011|
+| C++2| 11|2011|
+| Scala2| 10|2013|
+|Python3| 20|2013|
+| Java2| 15|2015|
+| Java4| 12|2015|
+| Kafka3| 5|2016|
+| Kafka2| 40|2017|
+| Kafka| 40|2019|
+| Kafka4| 1|2019|
+|Python4| 3|2022|
+Example3: Sorting By Stock
+scala> val bksds2 =
+bksds.sort("Stock").show()
+Example4: Sorting By Stock
+Descending
+scala> val bksds2 =
+bksds.sort(col("Stock").desc).s
+how()
++-------+-----+----+ +-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| Kafka4| 1|2019|
+| C++| 1|2010|
+| Scala4| 2|2011|
+| Scala3| 2|2011|
+|Python4| 3|2022|
+| Kafka3| 5|2016|
+| C++3| 6|2010|
+| Java3| 10|2005|
+| Scala2| 10|2013|
+| C++2| 11|2011|
+| C++4| 11|2010|
+| Java4| 12|2015|
+| Java| 15|2005|
+| Java2| 15|2015|
+|Python3| 20|2013|
+| Python| 20|2000|
+|Python2| 30|2010|
+| Scala| 30|2011|
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Name|Stock|Yopb|
++-------+-----+----+
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Scala| 30|2011|
+|Python2| 30|2010|
+|Python3| 20|2013|
+| Python| 20|2000|
+| Java2| 15|2015|
+| Java| 15|2005|
+| Java4| 12|2015|
+| C++4| 11|2010|
+| C++2| 11|2011|
+| Scala2| 10|2013|
+| Java3| 10|2005|
+| C++3| 6|2010|
+| Kafka3| 5|2016|
+|Python4| 3|2022|
+| Scala3| 2|2011|
+| Scala4| 2|2011|
+| Kafka4| 1|2019|
+| C++| 1|2010|
+Example5: Displaying By column
+names: Using Select
+scala> val bksds2 =
+bksds.select(col("Name"),col("Stock"
+)).show()
+Example6: Creating a new column
+names: Using Select
+scala> val bksds2 =
+bksds.selectExpr("Name","Stock as
+Instock").show()
++-------+-----+
+| Name|Stock|
++-------+-----+
+| Scala| 30|
+| Java| 15|
+| C++| 1|
+| Kafka| 40|
+| Python| 20|
+| Scala2| 10|
+| Java2| 15|
+| C++2| 11|
+| Kafka2| 40|
+|Python2| 30|
+| Scala3| 2|
+| Java3| 10|
+| C++3| 6|
+| Kafka3| 5|
+|Python3| 20|
+| Scala4| 2|
+| Java4| 12|
+| C++4| 11|
+| Kafka4| 1|
+|Python4| 3|
++-------+-------+
+| Name|Instock|
++-------+-------+
+| Scala| 30|
+| Java| 15|
+| C++| 1|
+| Kafka| 40|
+| Python| 20|
+| Scala2| 10|
+| Java2| 15|
+| C++2| 11|
+| Kafka2| 40|
+|Python2| 30|
+| Scala3| 2|
+| Java3| 10|
+| C++3| 6|
+| Kafka3| 5|
+|Python3| 20|
+| Scala4| 2|
+| Java4| 12|
+| C++4| 11|
+| Kafka4| 1|
+|Python4| 3|
+Example7: Displaying Ordered by
+column names: Using orderBy
+scala> val bksds2 =
+bksds.orderBy(col("Name")).show
+()
+Example8: Displaying Filtered column
+names: Using filtering
+scala> val bksds2 =
+bksds.filter(col("Yopb").gt(201
+5)).show()
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| C++| 1|2010|
+| C++2| 11|2011|
+| C++3| 6|2010|
+| C++4| 11|2010|
+| Java| 15|2005|
+| Java2| 15|2015|
+| Java3| 10|2005|
+| Java4| 12|2015|
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Kafka3| 5|2016|
+| Kafka4| 1|2019|
+| Python| 20|2000|
+|Python2| 30|2010|
+|Python3| 20|2013|
+|Python4| 3|2022|
+| Scala| 30|2011|
+| Scala2| 10|2013|
+| Scala3| 2|2011|
+| Scala4| 2|2011|
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Kafka3| 5|2016|
+| Kafka4| 1|2019|
+|Python4| 3|2022|
+scala> val bksds2 =
+bksds.filter(col("Yopb")>2015).
+show()
++-------+-----+----+
+| Name|Stock|Yopb|
++-------+-----+----+
+| Kafka| 40|2019|
+| Kafka2| 40|2017|
+| Kafka3| 5|2016|
+| Kafka4| 1|2019|
+|Python4| 3|2022|
+Example9 : Displaying By column
+names: Using agg functions
+scala> val bksds2 =
+bksds.agg(sum("Stock")).show()
++----------+
+|sum(Stock)|
++----------+
+| 284|
+Example10: More agg functions
+scala> val bksds2 =
+bksds.agg(sum("Stock"),max("Stock"),
+min("Yopb")).show()
++----------+----------+---------+
+|sum(Stock)|max(Stock)|min(Yopb)|
++----------+----------+---------+
+| 284| 40| 2000|
+Example11 : More agg functions
+scala> val bksds2 =
+bksds.agg(mean("Stock")).show()
++----------+
+|avg(Stock)|
++----------+
+| 14.2|
++----------+
+Spark SQL StructType & StructField
+Spark SQL providrs StructType & StructField classes are used to programmatically specify the
+schema to the DataFrame and to create complex columns like nested struct, array and map columns.
+Actually StructType object is a collection of StructField’s.
+We can use StructField to:
+1. Define column name,
+2. Define column data type,
+3. Define nullable column (boolean to specify if the field can be nullable or not) and
+4. Define column metadata.
+5. We can also add nested struct schema, ArrayType for arrays and MapType for key-value pairs.
+Though Spark infers a schema from data, some times we may need to define our own column names
+and data types.
+StructType – Defines the structure of the Dataframe
+Spark provides spark.sql.types.StructType class to define the structure of the DataFrame
+and It is a collection or list on StructField objects.
+StructField – Defines the metadata of the DataFrame column
+Spark provides spark.sql.types.StructField class to define the column name(String),
+column type (DataType), nullable column (Boolean) and metadata (MetaData).
+Using Spark StructType & StructField with DataFrame
+While creating a Spark DataFrame we can specify the structure using StructType and StructField
+classes.
+Example1 Using StructType & StructField
+This is an example to demonstrates using StructType & StructField on DataFrame
+First make the imports below
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.Row
+We start by creating a schema which is a StructType consisting of a collection of StructFields.
+val mySchema = StructType(Array(
+ StructField("Name",StringType,true),
+ StructField("Position",StringType,true),
+ StructField("Gender", StringType, true),
+ StructField("Age",IntegerType,true),
+ ))
+We specify the data using a sequence of rows
+val myData=Seq(Row("John","Manager","Male",38),
+ Row("Mary", "Director","Female", 45),
+ Row("Sally", "Engineer","Female", 30),
+ Row("Okelo", "Clerk","Male", 30),
+ Row("Wiclife", "Trainers","Male", 60),
+ Row("Wallace", "Clerk","Male", 40),
+ Row("Eunice", "Trainer","Female", 35),
+ Row("Barack", "Trainer","Male", 30),
+ Row("Simon", "Trainer", "Male", 55)
+)
+We can now create the data frame using spark object createDataFrame() function an rdd
+object created using the data and the schema)
+ val mydf = spark.createDataFrame(spark.sparkContext.parallelize(myData),mySchema)
+By running the above snippet, it displays below outputs.
+scala> mydf.show()
++-------+--------+------+---+
+| Name|Position|Gender|Age|
++-------+--------+------+---+
+| John| Manager| Male| 38|
+| Mary|Director|Female| 45|
+| Sally|Engineer|Female| 30|
+| Okelo| Clerk| Male| 30|
+|Wiclife|Trainers| Male| 60|
+|Wallace| Clerk| Male| 40|
+| Eunice| Trainer|Female| 35|
+| Barack| Trainer| Male| 30|
+| Simon| Trainer| Male| 55|
+We can now use the dataframe above to do all what we now know we can do including
+creating a dataset for easier manipulation
+TASK
+1. Consider the case of a class list of 20 students (consisting of stnum and name).
+Sits for cat1/10,cat2/20 and exam/70. The performance list should look as shown:
+ Number Name Gender Cat1 Cat2 Exam AggMarks Grade
+ Use StructType and StructField to ultimately create dataset using your own data
+originally consisting of your own values (Number,Name ,Gender,Cat1,Cat2,Exam). Use
+the data set to include the AggMarks and the Grade column.
+Using the resulting dataset generate the following reports:
+1. The performance list sorted ascending by the grade
+2. A list of the first top performers
+3. The student who performed the best in cat1
+4. The student who performed the best in cat2
+5. The best performing male
+6. The best performing Female
+7. How many Females are in the class

@@ -1,0 +1,545 @@
+Apache RDD Transformations and Action Examples
+• map ()
+• flatMap()
+• reduceByKey()
+• filter()
+• mapPartitions ()
+• mapPartitionWithIndex()
+• coalesce ()
+• repartition()
+The map:
+• map is a transformation operation that applies a specified function to each element of the
+RDD (Resilient Distributed Dataset) or DataFrame independently.
+• It operates on a per-element basis and does not have any notion of partitions. Each element
+is processed separately and may result in multiple tasks being executed in parallel,
+depending on the number of available worker nodes.
+flatMap
+The flatMap and reduceByKey functions stand out as indispensable tools for efficient data
+transformation and aggregation in apache environments.
+• The flatMap operation is a transformation function that takes an input element and returns
+zero or more output elements.
+• It is particularly useful when you want to split or transform a single input element into
+multiple output elements.
+• The beauty of flatMap lies in its ability to effortlessly handle scenarios where the output
+cardinality is different from the input cardinality.
+reduceByKey
+• The reduceByKey transformation is used mainly aggregation operation.
+• It groups elements by a key and applies a reduce function to the values associated with that
+key.
+• The result is a new dataset where each key is associated with a single reduced value.
+• This function plays a crucial role in summarizing data, often used for tasks such as counting
+occurrences, calculating totals, or finding maximum values.
+FlatMap,Map,reduceByKey
+Mult-line string input Word count
+EXAMPLE1: Analysing Marks Scores Frequency
+• We have a set of data representing marks scored in a test by a group of 42 students.
+• We need to write a spark program that can analyse the data and let us know how many
+students got what mark
+
+1. Create a file in Marks/marks.txt in your home directory with the following
+45,78,65,45,43,23,32,54,65,23,23,34,45,76,45,56,65,45,67,76,56
+45,78,65,45,43,23,32,54,65,23,23,34,45,76,45,56,65,45,67,76,56
+
+2. Create a marksRDD based on the marks.txt file
+
+scala> val marksRDD=spark.sparkContext.textFile("Marks/marks.txt")
+
+3. Use the flatMap() on the marksRDD to tokenise the marks by removing the “,”
+
+scala> val mk = marksRDD.flatMap(line => line.split(“,"))
+scala> mk.foreach(println)
+
+4. Use the map() together with the flatMap() to append a 1 on each of the mark.
+ The 1 is supposed to help with aggregating the count.
+ 
+Scala> val mk = marksRDD.flatMap(line => line.split(",")).map(word => (word, 1))
+scala> mk.foreach(println)
+5. Use the reduceByKey() method , the map() and the flatMap() to obtain the desired result.
+Mark.
+Note that reduceByKey(_ + _) is equivalent to reduceByKey((x,y)=> x + y). It takes two
+parameters, apply a function and returns.
+This time the reduceByKey() will add up all 1s corresponding to each mark value thus
+playing the aggregating function
+Scala> val mk = marksRDD.flatMap(line => line.split(",")).map(word => (word, 1)).reduceByKey(_+_)
+scala> mk.foreach(println)
+EXAMPLE2: Using The map() function
+To help us understand the difference between the map() and flatMap() functions, let us consider the same
+marksRDD based on the marks.txt file.
+Let use map() on the RDD and the collect() function that collect all the result from all the executors in the
+clustor. Tote that the output is an array of array.( I.e a two dimensional arrays)
+scala> val mkRDD= marksRDD.map(line => line.split(",")).collect
+mkRDD: Array[Array[String]] = Array(Array(45, 78, 65, 45, 43, 23, 32, 54, 65, 23, 23, 34, 45, 76, 45, 56,
+65, 45, 67, 76, 56), Array(45, 78, 65, 45, 43, 23, 32, 54, 65, 23, 23, 34, 45, 76, 45, 56, 65, 45, 67, 76, 56))
+Now we can use flatMap() on the mkRDD to flatten it to a single array which can further be flattened
+to break each of the mark as a token
+scala> val mkRDD2=mkRDD.flatMap(line => line)
+mkRDD: Array[String] = Array(45, 78, 65, 45, 43, 23, 32, 54, 65, 23, 23, 34, 45, 76, 45, 56, 65, 45, 67, 76,
+56, 45, 78, 65, 45, 43, 23, 32, 54, 65, 23, 23, 34, 45, 76, 45, 56, 65, 45, 67, 76, 56)
+Now we can use flatMap() on the mkRDD2 to flatten further breaking each of the mark as a token
+scala> val flatRDD=mkRDD2.flatMap(line => line.split(","))
+scala> flatRDD.foreach(println) //This will print the individual marks.
+Filtering in RDD
+• Filtering is a transformation operation in Spark that returns a new RDD consisting only of
+those elements that meet a specific condition.
+• It takes in a function that evaluates to a boolean value, and applies this function across the
+elements of the RDD returning only those elements that are true.
+• The general syntax of the filter function in Scala is:
+val filteredRDD = originalRDD.filter(x => condition)
+EXAMPLE3: Using Filter() together with flatMap()
+After flattening we filtering all marks greater than 50. But the original rdd array contains string of
+marks, so we convert the marks on the fly to integers using the java Integer.valueOf() method
+scala> val filtRDD=flatRDD.flatMap(m => m.split(",")).filter(mk => Integer.valueOf(mk)>50)
+filtRDD: Array[String] = Array(78, 65, 54, 65, 76, 56, 65, 67, 76, 56, 78, 65, 54, 65, 76, 56, 65, 67, 76, 56)
+scala> filtRDD.foreach(println)
+78
+65
+54
+65
+76
+56
+65
+67
+76
+56
+78
+65
+54
+65
+76
+56
+65
+67
+76
+56
+You can further filter the fltered RDD to create another RDD containing marks greater that 60
+scala> val filtRDD1=filtRDD.filter(mk => Integer.valueOf(mk)>60)
+filtRDD1: Array[String] = Array(78, 65, 65, 76, 65, 67, 76, 78, 65, 65, 76, 65, 67, 76)
+scala> filtRDD1.foreach(println)
+78
+65
+65
+76
+65
+67
+76
+78
+65
+65
+76
+65
+67
+76
+To display the number of elements in filtered RDD using the size() function
+scala> filtRDD1.size
+Other Filtering Examples
+Let us use an RDD of integerswhere filter out all the even and odd numbers.
+N.B The 1 at the end means we are using one processor core.
+scala> val
+numberRDD=spark.sparkContext.parallelize(List(1,2,3,4,5,6,7,8,9,10,11,15,
+17),1)
+numberRDD: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[71] at
+parallelize at <console>:22
+1. Filter out all the Even Numbers.
+The filter transformation is used with a lambda function n => n % 2 == 0
+scala> val evenNumsRDD = numberRDD.filter(n => n % 2 == 0)
+evenNumsRDD: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[72] at filter at
+<console>:23
+scala> evenNumsRDD.collect().foreach(println)
+2
+4
+6
+8
+10
+2. Filter out all the Odd Numbers.
+scala> val oddNumsRDD = numberRDD.filter(n => n % 2 ==1)
+oddNumsRDD: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[73] at filter at
+<console>:23
+scala> oddNumsRDD.collect().foreach(println)
+1
+3
+5
+7
+9
+11
+15
+17
+Task
+1. You are given a list of mix of positive and negative integer values. Use filter to generate an
+RDD containing only the +ve values
+2. Write an Apache spark set of codes that receives on a large set of integer values. The
+program should print only those values which are odd and are a multiple of 7.
+Filtering with Multiple Conditions
+Filtering can also be applied with more complex structures. Suppose you are dealing with a dataset
+of students marks, and you want to filter out all the students who have passed.
+Remember Case classes are mostly used for modelling immutable data. With case classes you do
+not need to use the new keyword when constructing an object
+• Let us create a case class that represents student marks for our structure.
+Example
+scala> case class StMarks(name: String, cat1: Int,cat2: Int,exam: Int)
+defined class StMarks
+• We create a stdRDD consisting of several objects.
+scala> val stdRDD = sc.parallelize(Seq(
+ | StMarks("Alice", 8,12,45),
+ | StMarks("Oloo", 8,10,41),
+ | StMarks("David", 6,15,35),
+ | StMarks("Frank", 9,11,53),
+ | StMarks("Eve",3,6,18),
+ | StMarks("Joseph",5,8,29),
+ | StMarks("John",6,18,31)
+ | ))
+We create a stPassedRDD consisting of all student who passed (sum>40) using
+filter()
+scala> val stPassedRDD =stdRDD.filter(st =>
+(st.cat1+st.cat2+st.exam)>=40)
+stPassedRDD: org.apache.spark.rdd.RDD[StMarks] = MapPartitionsRDD[75] at
+filter at <console>:23
+scala> stPassedRDD.collect().foreach(println)
+StMarks(Alice,8,12,45)
+StMarks(Oloo,8,10,41)
+StMarks(David,6,15,35)
+StMarks(Frank,9,11,53)
+StMarks(Joseph,5,8,29)
+Example2: Same as example above but this time we include the gender
+scala> case class StMarks(name: String, gender: String, cat1: Int,cat2: Int,exam: Int)
+defined class StMarks
+scala> val stdRDD = sc.parallelize(Seq(
+ | StMarks("Faith","F",9,11,33),
+ | StMarks("Joyce","F",7,8,39),
+ | StMarks("Frank","M",9,11,53),
+ | StMarks("Ladiah","F",6,10,30),
+ | StMarks("Joseph","M",5,8,29),
+ | StMarks("John","M",6,18,31),
+ | StMarks("Alice","F", 8,12,45),
+ | StMarks("Eve","F",3,6,18),
+ | StMarks("Joan","F",3,16,18),
+ | StMarks("James","M",6,14,28)
+ | ) )
+We want to find out all who passed and are females
+scala> val stPassedRDD =stdRDD.filter(st => (st.cat1+st.cat2+st.exam)>=40 && st.gender=="F")
+scala> stPassedRDD.collect().foreach(println)
+StMarks(Faith,F,9,11,33)
+StMarks(Joyce,F,7,8,39)
+StMarks(Ladiah,F,6,10,30)
+StMarks(Alice,F,8,12,45)
+Chaining Filters
+Filters can be chained to apply a sequence of filtering conditions. Each filter call will result in a new
+RDD, and the conditions can be applied one after the other.
+Example1: The above examples can be effectively chained as follow
+scala> val stPassedRDD =stdRDD.filter(st => (st.cat1+st.cat2+st.exam)>=40).filter(_.gender=="F")
+scala> stPassedRDD.collect().foreach(println)
+StMarks(Faith,F,9,11,33),
+StMarks(Joyce,F,7,8,39),
+StMarks(Ladiah,F,6,10,30),
+StMarks(Alice,F,8,12,45)
+Filtering Using User Defined Functions
+Filter conditions can be extracted to external functions for better readability, especially when
+dealing with complex conditions or when the same logic is reused across different parts of the
+application.
+For the above example we define two functions isFemale() and isPassed() and then we use them to
+filter in the RDD
+• Functions isFemale() and isPassed()
+scala> def isFemale(st: StMarks): Boolean= st.gender=="F"
+isFemale: (st: StMarks)Boolean
+• Functions isPassed()
+scala> def isPassed(st: StMarks): Boolean= (st.cat1+st.cat2+st.exam)>=40
+isPassed: (st: StMarks)Boolean
+• Using the two Functions
+scala> val stPassedRDD =stdRDD.filter(isPassed).filter(isFemale)
+stPassedRDD: org.apache.spark.rdd.RDD[StMarks] = MapPartitionsRDD[83] at filter at
+<console>:25
+scala> stPassedRDD.collect().foreach(println)
+StMarks(Faith,F,9,11,33)
+StMarks(Joyce,F,7,8,39)
+StMarks(Ladiah,F,6,10,30)
+StMarks(Alice,F,8,12,45)
+Filtering Performance Considerations
+Filtering can be a computationally expensive operation, especially for large datasets. The
+considerations below can help optimize filter operations:
+– Minimize Shuffling: Filtering does not change the number of partitions, but complex conditions
+might lead to data shuffling between nodes. Try to minimize shuffling by applying filters early in
+your data processing pipeline and by using conditions that do not require examining data in other
+partitions.
+– Repartition after Heavy Filtering: After a heavy filtering operation where many records are
+discarded, you might end up with unbalanced partitions. Consider using repartition or
+coalesce to rebalance your data and improve parallelism.
+– Broadcast Variables: If your filter conditions need large lookup tables or other data structures,
+consider using broadcast variables to send this data to all worker nodes efficiently.
+EXAMPLE 4: Word Count in A text File
+We need to write a spark program that can analyse and print out the frequency of every word in a
+textfile
+Create a file in Marks/file.txt in your home directory with the following
+The goal is to print out each word in the text file and how many times it has occurred.
+[root@Franko ~]# cat >examples/marks.txt
+We have a set of data representing marks scored in a test by a group of 42 students
+We need to write a spark program that can analyse the data and let us know how many students got what
+marks
+1. Create a textRDD based on the file.txt file
+scala> val txtRDD=spark.sparkContext.textFile("Marks/file.txt")
+2. Use the flatMap() on the txtRDD to create txtRDD2 the marks by removing the “ ”
+scala> val txtRDD2 = txtRDD.flatMap(line => line.split(" "))
+scala> txtRDD2.foreach(println)
+3. Use the map() together with the flatMap() to append a 1 on each of the word and create an
+txtRDD3.
+ The 1 is supposed to help with aggregating the count.
+Scala> val txtRDD3 = txtRDD2.flatMap(line => line.split(" ")).map(word => (word, 1))
+scala> txtRDD3.foreach(println)
+4. Use the reduceByKey() method , the map() and the flatMap() on txtRDD3 to obtain the
+desired result thus creating txtRDD4
+Scala> val txtRDD4 = txtRDD3.flatMap(line => line.split(" ")).map(word => (word, 1)).reduceByKey(_+_)
+scala> txtRDD4.foreach(println)
+EXAMPLE 5: Frequency of Every Letter a Text File
+We need to write a spark program that can analyse and print out the frequency of every word in a
+textfile
+Use the same file in Marks/file.txt in your home directory with the following
+The goal is to print out each letter in the text file and how many times it has occurred.
+1. Create a textRDD based on the file.txt file
+scala> val txtRDD=spark.sparkContext.textFile("Marks/January/file.txt")
+2. Use the flatMap() on the txtRDD to create txtRDD2 that contains word tokens by
+removing the “ ”
+scala> val txtRDD2 = txtRDD.flatMap(line => line.split(" "))
+scala> txtRDD2.foreach(println)
+3. We need to flatten the txtRDD2 further by using the flatMap() to create txtRDD3 that
+contains letter tokens by removing the “”. Take note we are breaking every word to its
+letters.
+scala> val txtRDD3= txtRDD2.flatMap(line => line.split(""))
+scala> txtRDD3.foreach(println)
+4. Use the map() together with the flatMap() to append a 1 on each of the letter and create an
+txtRDD4.
+ The 1 is supposed to help with aggregating the letter count.
+Scala> val txtRDD4 = txtRDD3.flatMap(line => line.split("")).map(word => (word, 1))
+scala> txtRDD4.foreach(println)
+5. Use the reduceByKey() method , the map() and the flatMap() on txtRDD4 to obtain the
+desired result thus creatining txtRDD5
+Scala> val txtRDD5 = txtRDD4.flatMap(line => line.split(" ")).map(word => (word, 1)).reduceByKey(_+_)
+scala> txtRDD5.foreach(println)
+TASK1: Word and Letter Frequencies
+A text file contains several paragraphs. Each paragraphs contains a number of sentences which are
+punctuated by commas through out the document.
+You are required to write a spark program that can analyse and print out the frequency of every
+word and the frequency of every letter in the text file.
+[Hint: First Figure out the order of flattening the text file contents]
+Example 6: Using the reduce(func) to get the sum of integer values in a list
+The reduce(func) is used to performs an aggregation on the rows in the dataset using the provided
+func. There are two rules that the provided functions must follow.
+• The first one is it must be a binary operator,meaning it must take two arguments of the
+same type, and it produces an output of the same type.
+• The second one is it must follow the commutative and associative properties in order for the
+result to be computed correctly in a parallel manner.
+• The only the operations that can be supported is addition and multiplication
+scala> val numberRDD=spark.sparkContext.parallelize(List(1,2,3,4,5,6,7,8,9,10),1)
+To get the total sum of the list we need the function below which is a binary operator
+scala> def add(v1:Int, v2:Int): Int={ v1+v2}
+scala> numberRDD.reduce(add)
+res31: Int = 55
+To see the process of the aggregation is done modify the add function as shown below
+def add(v1:Int, v2:Int): Int={
+ | println(s"v1:$v1,v2:$v2=>(${v1+v2})")
+ | v1+v2
+ | }
+Use Cases of flatMap & reduceByKey
+It is important to understand the difference between the `map` and `flatMap` functions:
+• The `map` function is used when the transformation operation produces one result for each
+input element. It keeps the same number of elements in both the input and output RDDs.
+• The `flatMap` function is employed when each input element can result in zero, one, or
+more output elements. The final output RDD could therefore have a different number of
+elements than the input RDD.
+flatMap
+• Text Processing: As demonstrated in the word count example, flatMap is incredibly
+useful for splitting and transforming text data into meaningful components.
+• Data Normalization: When working with data in various formats, flatMap can be
+employed to normalize the data, turning it into a structured format suitable for further
+processing.
+• Multi-Output Transformations: flatMap handles scenarios where a single input needs to
+generate multiple outputs, such as when an input record creates several related records. 
+reduceByKey
+• Aggregation and Summarization: reduceByKey is essential for aggregating data based
+on a key, making it ideal for tasks like calculating totals, averages, or maximum values.
+• Grouping Data: It’s perfect for grouping data by a specific criterion, such as grouping sales
+by product category or user activity by date.
+• Efficient Data Processing: By reducing data based on keys before further processing,
+reduceByKey can significantly improve the efficiency of computations.
+When to use flatMap and reduceByKey
+Data Transformation and Custom Logic
+• Complex Transformations: If your data requires custom transformations that cannot be
+easily expressed using SQL queries, flatMap can be useful. It lets you apply complex
+logic to each element in a distributed fashion.
+• Multi-Output Transformations: When you need to produce multiple output records for
+each input record, as demonstrated by the word count example in the previous blog post,
+flatMap is the ideal choice.
+Efficiency and Flexibility
+• Performance: flatMap and reduceByKey can offer better performance in certain
+scenarios. They allow you to control the exact steps of your data processing pipeline and
+optimize for your specific use case.
+• Memory Efficiency: For certain data processing tasks, especially those that involve finegrained operations or non-standard data structures, flatMap and reduceByKey can be
+more memory-efficient compared to constructing intermediate DataFrames in Spark SQL.
+The map , mapPartitions &mapPartitionWithIndex in RDD?
+The map() and mapPartitions() and mapPartitionWithIndex() transformations applies a
+function to an RDD independently but differently ways
+mapPartitions
+mapPartition is a transformation operation that applies a function to each partition of an RDD.
+It allows you to perform transformations that involve processing all elements within a partition
+together.
+The function you provide to mapPartition takes an iterator as input, which allows you to
+perform operations that require looking at all the elements within a partition together.
+• It can be more efficient than map for certain operations because it reduces the overhead of
+invoking a function for each individual element.
+mapPartitionWithIndex:
+• mapPartitionWithIndex is similar to mapPartition, but takes two parameters. The first
+parameter is the index of the partition and the second is an iterator through all the items
+within the partition after applying whatever transformation the function encodes.
+• This can be useful when you need to apply different transformations to different partitions
+based on their index or when you want to include the partition index in the result
+Spark Repartition() vs Coalesce():
+• In Apache Spark, both repartition() and coalesce() are methods used to control
+the partitioning of data in a Resilient Distributed Dataset (RDD) or a DataFrame.
+• Proper partitioning can have a significant impact on the performance and efficiency of your
+Spark job. These methods serve different purposes and have distinct use cases:
+repartition()
+• repartition(<code>numPartitions: Int) is used to increase or decrease the
+number of partitions in an RDD or DataFrame.
+• It is typically used when you want to increase parallelism or evenly distribute the data across
+a certain number of partitions.
+• If you increase the number of partitions using repartition(), Spark will perform a full
+shuffle, which can be a costly operation.
+• It’s useful when you need to redistribute data for load balancing, or when you want to
+increase the parallelism for operations like joins or aggregations.
+Example 4
+scala> case class StMarks(name: String, gender: String, cat1:
+Int,cat2:Int, exam:Int)
+defined class StMarks
+scala> val stdRDD = sc.parallelize(Seq(
+ | StMarks("Oloo","M",6,18,31),
+ | StMarks("John","M",8,14,48),
+ | StMarks("Ladiah","F",6,10,30),
+ | StMarks("Alice","F", 8,12,45),
+ | StMarks("Faith","F",9,11,33),
+ | StMarks("Joseph","M",8,14,48),
+ | StMarks("Joyce","F",7,8,39),
+ | StMarks("Joan","F",8,10,38),
+ | StMarks("Frank","M",9,11,53),
+ | StMarks("Eve","F",3,6,18)
+ | ))
+scala> val stRDD2=stdRDD.repartition(8)
+coalesce()
+• coalesce(<code>numPartitions: Int, shuffle: Boolean = false) is
+used to reduce the number of partitions in an RDD or DataFrame. It’s also used for
+repartitioning but with the goal of reducing the number of partitions, as opposed to
+increasing it.
+• By default, coalesce() does not trigger a shuffle. However, you can force a shuffle by
+setting the shuffle parameter to true. If you don’t shuffle, it will try to coalesce
+partitions by moving data within the same executor, which is more efficient than a full
+shuffle.
+• coalesce() is often used to optimize the performance of Spark jobs by reducing the
+number of partitions when you have too many partitions that are not necessary.
+Spark coalesce Example
+scala> val stRDD3=stRDD2.repartition(3)
+More Examples
+• map
+• mapPartitions &
+• mapPartitionWithIndex
+• Also count(): which Return the number of elements in the RDD.
+Example 5
+//Generation a range of 30 data set
+scala> var data=1 to 30
+data: scala.collection.immutable.Range.Inclusive = Range 1 to 30
+scala> val rdd = spark.sparkContext.parallelize(data, 8)
+rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[94] at
+parallelize at <console>:23
+scala> println(rdd.getNumPartitions);
+8
+//We define a function that will be called for each partition printing out the partition data
+// It first convert the data set in each partition to be a list. So the iterator works on the list.
+//The function ,returns another iterator
+scala> def printDataInPartition(index: Int, iterator: Iterator[Int]):
+Iterator[Unit]= {
+ | val partData = iterator.toList
+ | val i = index +1
+ | println(s"Partition $i: ${partData.mkString(", ")}")
+ | Iterator.empty
+ | }
+printDataInPartition: (index: Int, iterator: Iterator[Int])Iterator[Unit]
+scala> rdd.mapPartitionsWithIndex(printDataInPartition).count()
+Partition 6: 19, 20, 21, 22
+Partition 1: 1, 2, 3
+Partition 7: 23, 24, 25, 26
+Partition 4: 12, 13, 14, 15
+Partition 8: 27, 28, 29, 30
+Partition 3: 8, 9, 10, 11
+Partition 5: 16, 17, 18
+Partition 2: 4, 5, 6, 7
+res62: Long = 0
+/Repartition three partitions only
+scala> val rdd2=rdd.repartition(3)
+rdd2: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[99] at repartition
+at <console>:23
+//Using mapPartitionsWithIndex
+scala> rdd2.mapPartitionsWithIndex(printDataInPartition).count()
+Partition 1: 3, 5, 10, 13, 17, 21, 25, 29
+Partition 3: 2, 4, 7, 9, 12, 15, 16, 20, 24, 28
+Partition 2: 1, 6, 8, 11, 14, 18, 19, 22, 23, 26, 27, 30
+res63: Long = 0
+/Repartition 1 partitions only
+scala> val rdd2=rdd.repartition(1)
+rdd2: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[125] at
+repartition at <console>:23
+scala> rdd2.mapPartitionsWithIndex(printDataInPartition).count()
+Partition 1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
+res70: Long = 0
+//We define a function that to be called on each partition printing out the sum of the data
+scala> def printSumInPartition(iterator:Iterator[Int]):Iterator[Unit]= {
+ | val partData = iterator.toList.sum
+ | println(s" ${partData}")
+ | Iterator.empty
+ | }
+printSumInPartition: (iterator: Iterator[Int])Iterator[Unit]
+//We repartition RDD to 5 partitions
+scala> val rdd2=rdd.repartition(5)
+rdd2: org.apache.spark.rdd.RDD[Int] = MapPartitionsRDD[130] at
+repartition at <console>:23
+//Using mapPartitions function which call printSumInPartition() function to printing
+out the sum of the data for each partition
+scala> rdd2.mapPartitions(printSumInPartition).count()
+ 71
+ 83
+ 93
+ 122
+ 96
+//You can redefine the printSumInPartition() function to printing out the partition data
+as well as the sum for each partition
+scala> def printSumInPartition(iterator: Iterator[Int]): Iterator[Unit]=
+{
+ | val partData= iterator.toList
+ | val partsum=partData.sum
+ | println(s" ${partData}\t: Sum is: ${partsum}")
+ | Iterator.empty
+ | }
+printSumInPartition: (iterator: Iterator[Int])Iterator[Unit]
+scala> rdd2.mapPartitions(printSumInPartition).count()
+ List(1, 7, 18, 21, 24) : Sum is: 71
+ List(3, 4, 9, 13, 26, 28) : Sum is: 83
+ List(5, 10, 14, 16, 19, 29) : Sum is: 93
+ List(6, 11, 15, 17, 20, 23, 30) : Sum is: 122
+ List(2, 8, 12, 22, 25, 27) : Sum is: 96
+res72: Long = 0
+Example 6
+//Modify the printSumInPartition() function printPartitionDetails() to printing
+out the partition data, the sum, the max, the min, and , the length for each partition
+scala>def printPartitionDetails(iterator:Iterator[Int]):Iterator[Unit]={
+ | val partData= iterator.toList
+ | val partsum=partData.sum
+ | val partmax=partData.max
+ | val partmin=partData.min
+ | val partlen=partData.length
+ | println(s" ${partData}\t: Sum: ${partsum}\tMaximum: $
+{partmax}\t:Minimum: ${partmin}\t:Length:${partlen}")
+ | Iterator.empty
+ | }
+printSumInPartition: (iterator: Iterator[Int])Iterator[Unit]
+scala> rdd2.mapPartitions(printPartitionDetails).count()
+ List(5, 10, 14, 16, 19, 29) : Sum: 93 Maximum: 29 :Minimum: 5 :Length:6
+ List(3, 4, 9, 13, 26, 28) : Sum: 83 Maximum: 28 :Minimum: 3 :Length:6
+ List(1, 7, 18, 21, 24) : Sum: 71 Maximum: 24 :Minimum: 1 :Length:5
+ List(6, 11, 15, 17, 20, 23, 30) : Sum: 122 Maximum: 30 :Minimum: 6 :Length:7
+ List(2, 8, 12, 22, 25, 27) : Sum: 96 Maximum: 27 :Minimum: 2 :Length:6
+res73: Long = 0
